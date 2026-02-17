@@ -1,200 +1,121 @@
-const statusBar = document.getElementById("statusBar");
 
-// Map init
-const map = L.map("map", { zoomControl: true }).setView([25.05, 121.55], 11);
+const statusBar=document.getElementById("statusBar");
 
-// Basemaps (English options)
-const basemaps = {
-  carto_light: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    maxZoom: 20,
-    attribution: "© OpenStreetMap contributors © CARTO"
-  }),
-  carto_voyager: L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 20,
-    attribution: "© OpenStreetMap contributors © CARTO"
-  }),
-  esri: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19,
-    attribution: "Tiles © Esri"
-  }),
-  osm: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap contributors"
-  })
+const map=L.map("map").setView([25.05,121.55],11);
+
+// basemaps
+const basemaps={
+carto_light:L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"),
+carto_voyager:L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"),
+esri:L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"),
+osm:L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 };
+let activeBase=basemaps.carto_light.addTo(map);
 
-let activeBase = basemaps.carto_light.addTo(map);
-
-// Marker clustering (keeps map usable when many spots are shown)
-const cluster = L.markerClusterGroup({
-  showCoverageOnHover: false,
-  maxClusterRadius: 50
-});
+// clustering
+const cluster=L.markerClusterGroup({maxClusterRadius:50});
 map.addLayer(cluster);
 
-// UI state
-let activeCategories = new Set(); // empty = all
-let searchTerm = "";
+// state
+let activeCats=new Set();
+let searchTerm="";
 
-// Helpers
-function escapeHtml(s){
-  return (s ?? "").toString().replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[c]));
-}
-function googleDirectionsLink(lat, lng){
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
-function matchesSearch(name, category, notes){
-  if (!searchTerm) return true;
-  const q = searchTerm.toLowerCase();
-  return (name || "").toLowerCase().includes(q) ||
-         (category || "").toLowerCase().includes(q) ||
-         (notes || "").toLowerCase().includes(q);
-}
-function categoryAllowed(cat){
-  return activeCategories.size === 0 || activeCategories.has(cat);
-}
-
-// Build categories
-const categories = Array.from(new Set((window.TPE_SPOTS || []).map(s => s.category))).sort();
-const filtersEl = document.getElementById("filters");
+// categories
+const categories=[...new Set(TPE_SPOTS.map(s=>s.category))].sort();
+const filtersEl=document.getElementById("filters");
 
 function renderFilters(){
-  filtersEl.innerHTML = "";
-  categories.forEach(cat=>{
-    const pill = document.createElement("div");
-    pill.className = "pill " + (activeCategories.has(cat) ? "on" : "");
-    pill.textContent = cat;
-    pill.onclick = () => {
-      if (activeCategories.has(cat)) activeCategories.delete(cat);
-      else activeCategories.add(cat);
-      renderFilters();
-      renderMarkers();
-      renderList();
-    };
-    filtersEl.appendChild(pill);
-  });
+filtersEl.innerHTML="";
+categories.forEach(cat=>{
+const el=document.createElement("div");
+el.className="pill "+(activeCats.has(cat)?"on":"");
+el.textContent=cat;
+el.onclick=()=>{
+activeCats.has(cat)?activeCats.delete(cat):activeCats.add(cat);
+renderFilters(); renderMarkers(); renderList();
+};
+filtersEl.appendChild(el);
+});
 }
 renderFilters();
 
-// Suggestions (datalist)
-const suggestionsEl = document.getElementById("suggestions");
-function renderSuggestions(){
-  suggestionsEl.innerHTML = "";
-  const items = (window.TPE_SPOTS || []).slice(0);
-  // add categories as suggestions too
-  categories.forEach(c => items.push({name:c}));
-  items.slice(0, 250).forEach(x=>{
-    const o = document.createElement("option");
-    o.value = x.name;
-    suggestionsEl.appendChild(o);
-  });
-}
-renderSuggestions();
+// suggestions
+const sug=document.getElementById("suggestions");
+[...TPE_SPOTS.map(x=>x.name),...categories].forEach(n=>{
+let o=document.createElement("option");o.value=n;sug.appendChild(o);
+});
 
-// Markers
-let markerIndex = []; // {spot, marker}
+// markers
+let markerIndex=[];
 function renderMarkers(){
-  cluster.clearLayers();
-  markerIndex = [];
+cluster.clearLayers(); markerIndex=[];
+TPE_SPOTS.forEach(sp=>{
+if(activeCats.size && !activeCats.has(sp.category)) return;
+if(searchTerm && !(sp.name+sp.category).toLowerCase().includes(searchTerm)) return;
 
-  (window.TPE_SPOTS || []).forEach(sp=>{
-    if (!categoryAllowed(sp.category)) return;
-    if (!matchesSearch(sp.name, sp.category, sp.notes)) return;
-
-    const marker = L.marker([sp.lat, sp.lng]);
-    const popup =
-      `<b>${escapeHtml(sp.name)}</b><br>` +
-      `<span style="color:#9aa3b2">${escapeHtml(sp.category)}</span>` +
-      (sp.notes ? `<br><span style="color:#9aa3b2">${escapeHtml(sp.notes)}</span>` : "") +
-      `<br><a target="_blank" rel="noopener" href="${googleDirectionsLink(sp.lat, sp.lng)}">Directions</a>`;
-    marker.bindPopup(popup);
-
-    cluster.addLayer(marker);
-    markerIndex.push({ sp, marker });
-  });
-
-  statusBar.textContent = `Showing ${markerIndex.length} spots` +
-    (activeCategories.size ? ` • Filtered: ${Array.from(activeCategories).join(", ")}` : "") +
-    (searchTerm ? ` • Search: "${searchTerm}"` : "");
+let m=L.marker([sp.lat,sp.lng]).bindPopup("<b>"+sp.name+"</b><br>"+sp.category);
+cluster.addLayer(m);
+markerIndex.push({sp,m});
+});
+statusBar.textContent=markerIndex.length+" places shown";
 }
 renderMarkers();
 
-// Side list
-const sidepanel = document.getElementById("sidepanel");
-const panelTitle = document.getElementById("panelTitle");
-const panelSub = document.getElementById("panelSub");
-const listEl = document.getElementById("list");
-document.getElementById("closePanel").onclick = ()=> sidepanel.classList.remove("open");
-
+// list
+const listEl=document.getElementById("list");
 function renderList(){
-  panelTitle.textContent = "All spots";
-  panelSub.textContent = "Tap an item to focus it. Use filters/search to narrow.";
-
-  const items = markerIndex.map(x => x.sp);
-
-  listEl.innerHTML = "";
-  items.slice(0, 250).forEach(sp=>{
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <div class="name">${escapeHtml(sp.name)}</div>
-      <div class="meta">${escapeHtml(sp.category)}</div>
-      <div class="actions">
-        <a class="btn" href="#" data-lat="${sp.lat}" data-lng="${sp.lng}">View on map</a>
-        <a class="btn" target="_blank" rel="noopener" href="${googleDirectionsLink(sp.lat, sp.lng)}">Directions</a>
-      </div>
-    `;
-    listEl.appendChild(div);
-  });
-
-  listEl.querySelectorAll('a[data-lat]').forEach(a=>{
-    a.addEventListener("click",(e)=>{
-      e.preventDefault();
-      const lat = parseFloat(a.getAttribute("data-lat"));
-      const lng = parseFloat(a.getAttribute("data-lng"));
-      map.setView([lat, lng], 15);
-
-      // open popup if marker exists
-      const found = markerIndex.find(x => x.sp.lat === lat && x.sp.lng === lng);
-      if (found){
-        found.marker.openPopup();
-      }
-      // show panel on mobile if needed
-      sidepanel.classList.add("open");
-    });
-  });
+listEl.innerHTML="";
+markerIndex.forEach(x=>{
+let d=document.createElement("div");
+d.className="item";
+d.innerHTML=`<div class="name">${x.sp.name}</div>
+<div class="meta">${x.sp.category}</div>
+<a class="btn" href="#">Zoom</a>`;
+d.querySelector("a").onclick=e=>{
+e.preventDefault();
+map.setView([x.sp.lat,x.sp.lng],15);
+x.m.openPopup();
+};
+listEl.appendChild(d);
+});
 }
 renderList();
 
-// Search
-document.getElementById("search").addEventListener("input", (e)=>{
-  searchTerm = (e.target.value || "").trim();
-  renderMarkers();
-  renderList();
-});
-
-// Basemap toggle
-document.getElementById("basemap").addEventListener("change", (e)=>{
-  const v = e.target.value;
-  if (activeBase) map.removeLayer(activeBase);
-  activeBase = (basemaps[v] || basemaps.carto_light).addTo(map);
-});
-
-// Reset
-document.getElementById("resetBtn").onclick = ()=>{
-  document.getElementById("search").value = "";
-  searchTerm = "";
-  activeCategories.clear();
-  renderFilters();
-  renderMarkers();
-  renderList();
-  map.setView([25.05, 121.55], 11);
+// search
+document.getElementById("search").oninput=e=>{
+searchTerm=e.target.value.toLowerCase();
+renderMarkers(); renderList();
 };
 
-// Auto-open list on desktop, hide on mobile by default
-if (window.innerWidth > 820){
-  sidepanel.classList.add("open");
-}
-statusBar.textContent = "Ready.";
+// basemap switch
+document.getElementById("basemap").onchange=e=>{
+map.removeLayer(activeBase);
+activeBase=basemaps[e.target.value].addTo(map);
+};
+
+// reset
+document.getElementById("resetBtn").onclick=()=>{
+searchTerm=""; activeCats.clear();
+document.getElementById("search").value="";
+renderFilters(); renderMarkers(); renderList();
+map.setView([25.05,121.55],11);
+};
+
+// location
+let myMarker=null,myCircle=null;
+document.getElementById("locBtn").onclick=()=>{
+if(!navigator.geolocation){alert("Geolocation not supported");return;}
+statusBar.textContent="Getting location...";
+navigator.geolocation.getCurrentPosition(pos=>{
+let {latitude,longitude,accuracy}=pos.coords;
+if(myMarker) map.removeLayer(myMarker);
+if(myCircle) map.removeLayer(myCircle);
+myMarker=L.marker([latitude,longitude]).addTo(map).bindPopup("You are here").openPopup();
+myCircle=L.circle([latitude,longitude],{radius:accuracy,opacity:.6,fillOpacity:.1}).addTo(map);
+map.setView([latitude,longitude],15);
+statusBar.textContent="Location found";
+},()=>{statusBar.textContent="Location denied";});
+};
+
+// panel toggle
+document.getElementById("closePanel").onclick=()=>document.getElementById("sidepanel").style.display="none";

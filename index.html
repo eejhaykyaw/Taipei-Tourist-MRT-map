@@ -1,59 +1,61 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Taipei Tourist Map (Filters + Search + English Basemap)</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Taipei Tourist Map</title>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin=""/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 
-  <link rel="stylesheet" href="./style.css" />
+<link rel="stylesheet" href="./style.css"/>
 </head>
 <body>
-  <div class="topbar">
-    <div class="title">
-      <div class="h1">Taipei Tourist Map</div>
-      <div class="sub">Filters + Search • English basemap options • Day trips included (Jiufen/Shifen/Yehliu/Tamsui/Keelung)</div>
-    </div>
 
-    <div class="controls">
-      <input id="search" type="search" placeholder="Search (e.g., Ximending, museum, night market, Jiufen)" list="suggestions" />
-      <datalist id="suggestions"></datalist>
+<div class="topbar">
+<div class="title">
+<div class="h1">Taipei Tourist Map</div>
+<div class="sub">Search • Filters • English Map • GPS Location</div>
+</div>
 
-      <select id="basemap" title="Map label language depends on basemap">
-        <option value="carto_light" selected>Basemap: English (Light)</option>
-        <option value="carto_voyager">Basemap: English (Voyager)</option>
-        <option value="esri">Basemap: English-ish (Esri)</option>
-        <option value="osm">Basemap: Local labels (OSM)</option>
-      </select>
+<div class="controls">
+<input id="search" type="search" placeholder="Search place or category" list="suggestions"/>
+<datalist id="suggestions"></datalist>
 
-      <button id="resetBtn" title="Reset view and clear filters">Reset</button>
-    </div>
+<select id="basemap">
+<option value="carto_light">English Light</option>
+<option value="carto_voyager">English Voyager</option>
+<option value="esri">English Street</option>
+<option value="osm">Local</option>
+</select>
 
-    <div class="filters" id="filters"></div>
-  </div>
+<button id="locBtn">My Location</button>
+<button id="resetBtn">Reset</button>
+</div>
 
-  <div id="map"></div>
+<div class="filters" id="filters"></div>
+</div>
 
-  <div class="sidepanel" id="sidepanel">
-    <div class="sidehead">
-      <div>
-        <div class="panelTitle" id="panelTitle">All spots</div>
-        <div class="panelSub" id="panelSub">Use filters/search. Tap an item to focus it.</div>
-      </div>
-      <button id="closePanel" title="Close">✕</button>
-    </div>
-    <div class="list" id="list"></div>
-  </div>
+<div id="map"></div>
 
-  <div class="bottombar" id="statusBar">Loading…</div>
+<div class="sidepanel" id="sidepanel">
+<div class="sidehead">
+<div>
+<div class="panelTitle">Places</div>
+<div class="panelSub">Tap item → zoom</div>
+</div>
+<button id="closePanel">✕</button>
+</div>
+<div class="list" id="list"></div>
+</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+<div class="bottombar" id="statusBar">Ready</div>
 
-  <script src="./spots.js"></script>
-  <script src="./app.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="./spots.js"></script>
+<script src="./app.js"></script>
+
 </body>
 </html>
